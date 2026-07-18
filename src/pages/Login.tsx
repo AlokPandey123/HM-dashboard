@@ -50,7 +50,7 @@ export function Login() {
               <polyline points="9 22 9 12 15 12 15 22"/>
             </svg>
           </div>
-          <h2 className="text-4xl font-bold text-white mb-3">HMS Portal</h2>
+          <h2 className="text-4xl font-bold text-white mb-3">Sunrise IVF Center</h2>
           <p className="text-slate-400 text-lg mb-8">Hospital Management System</p>
           <div className="grid grid-cols-2 gap-4 text-left max-w-sm mx-auto">
             {['Patient Management', 'OPD & Pathology', 'Billing & POS', 'Inventory Control'].map(f => (
@@ -135,7 +135,7 @@ export function Login() {
 
             <div className="mt-6 p-3 bg-slate-50 rounded-xl border border-slate-100">
               <p className="text-xs text-slate-400 text-center">
-                Default credentials: <span className="font-mono text-slate-600">superadmin@hms.com</span>
+                Default credentials: <span className="font-mono text-slate-600">superadmin@sunriseivf.com</span>
               </p>
             </div>
           </div>

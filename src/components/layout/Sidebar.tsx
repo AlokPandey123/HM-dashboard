@@ -120,8 +120,8 @@ export function Sidebar() {
           </svg>
         </div>
         <div className="min-w-0">
-          <p className="text-white font-bold text-sm leading-tight tracking-wide">HMS Portal</p>
-          <p className="text-slate-400 text-xs mt-0.5">Hospital Management</p>
+          <p className="text-white font-bold text-sm leading-tight tracking-wide">Sunrise IVF Center</p>
+          <p className="text-slate-400 text-xs mt-0.5">IVF Center</p>
         </div>
       </div>
 

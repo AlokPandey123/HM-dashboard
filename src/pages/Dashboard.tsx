@@ -121,7 +121,7 @@ export function Dashboard() {
             <h2 className="font-bold text-slate-900 mb-4">System Info</h2>
             <div className="space-y-3 text-sm">
               {[
-                { label: 'Version',          value: 'HMS v1.0.0',          valueClass: 'text-slate-700' },
+                { label: 'Version',          value: 'Sunrise IVF Center v1.0.0',          valueClass: 'text-slate-700' },
                 { label: 'Return Deduction', value: '20% deduction',       valueClass: 'text-orange-600 font-semibold' },
                 { label: 'Payment Gateway',  value: 'Stripe Enabled',      valueClass: 'text-emerald-600 font-semibold' },
                 { label: 'Date',             value: new Date().toLocaleDateString('en-IN', { dateStyle: 'medium' }), valueClass: 'text-slate-700' },
