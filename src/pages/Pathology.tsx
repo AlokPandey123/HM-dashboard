@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FlaskConical, Plus, TestTube, Loader2, CheckCircle, Clock, AlertCircle, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FlaskConical, Plus, TestTube, Loader2, CheckCircle, Clock, AlertCircle, CalendarDays, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import api from '../api/axios';
 import { Modal } from '../components/Modal';
 import { PermissionGuard } from '../components/PermissionGuard';
@@ -33,13 +33,24 @@ export function Pathology() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [bookingTotal, setBookingTotal] = useState(0);
   const [bookingPage, setBookingPage] = useState(1);
-  const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [testModal, setTestModal] = useState(false);
   const [bookingModal, setBookingModal] = useState(false);
   const [testForm, setTestForm] = useState({ ...emptyTest });
   const [bookingForm, setBookingForm] = useState({ ...emptyBooking });
   const [saving, setSaving] = useState(false);
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientOpen, setPatientOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [patientResults, setPatientResults] = useState<Patient[]>([]);
+  const [patientLoading, setPatientLoading] = useState(false);
+  const [testSearch, setTestSearch] = useState('');
+
+  const filteredTests = testSearch
+    ? tests.filter(t => t.isActive && !bookingForm.testIds.includes(t._id) && (t.name.toLowerCase().includes(testSearch.toLowerCase()) || t.code.toLowerCase().includes(testSearch.toLowerCase())))
+    : [];
+
+  const selectedTests = tests.filter(t => bookingForm.testIds.includes(t._id));
 
   const load = async () => {
     setLoading(true);
@@ -52,13 +63,30 @@ export function Pathology() {
       setBookings(bRes.data.data.bookings);
       setBookingTotal(bRes.data.data.total || 0);
     } finally { setLoading(false); }
-    try {
-      const pRes = await api.get('/patients', { params: { all: true } });
-      setPatients(Array.isArray(pRes.data.data) ? pRes.data.data : []);
-    } catch { /* form data only */ }
   };
 
   useEffect(() => { load(); }, [bookingPage]);
+  useEffect(() => {
+    if (!patientSearch) { setPatientResults([]); return; }
+    const timer = setTimeout(async () => {
+      setPatientLoading(true);
+      try {
+        const res = await api.get('/patients', { params: { search: patientSearch, limit: 10 } });
+        setPatientResults(res.data.data.patients || []);
+      } catch { setPatientResults([]); }
+      finally { setPatientLoading(false); }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [patientSearch]);
+
+  const closeBookingModal = () => {
+    setBookingModal(false);
+    setBookingForm({ ...emptyBooking });
+    setSelectedPatient(null);
+    setPatientSearch('');
+    setPatientResults([]);
+    setTestSearch('');
+  };
 
   const handleSaveTest = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -80,8 +108,7 @@ export function Pathology() {
     setSaving(true);
     try {
       await api.post('/pathology/bookings', { ...bookingForm, discount: Number(bookingForm.discount || 0), amountPaid: Number(bookingForm.amountPaid || 0) });
-      setBookingModal(false);
-      setBookingForm({ ...emptyBooking });
+      closeBookingModal();
       load();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
@@ -89,10 +116,16 @@ export function Pathology() {
     } finally { setSaving(false); }
   };
 
-  const toggleTest = (id: string) =>
-    setBookingForm(prev => ({ ...prev, testIds: prev.testIds.includes(id) ? prev.testIds.filter(t => t !== id) : [...prev.testIds, id] }));
+  const addTest = (test: Test) => {
+    if (!bookingForm.testIds.includes(test._id)) {
+      setBookingForm(prev => ({ ...prev, testIds: [...prev.testIds, test._id] }));
+    }
+    setTestSearch('');
+  };
 
-  const selectedTotal = tests.filter(t => bookingForm.testIds.includes(t._id)).reduce((s, t) => s + t.price, 0);
+  const removeTest = (id: string) => setBookingForm(prev => ({ ...prev, testIds: prev.testIds.filter(t => t !== id) }));
+
+  const selectedTotal = selectedTests.reduce((s, t) => s + t.price, 0);
   const netTotal = selectedTotal - Number(bookingForm.discount || 0);
 
   return (
@@ -254,12 +287,12 @@ export function Pathology() {
         <form onSubmit={handleSaveTest} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             {[
-              { f: 'name',           l: 'Test Name',      req: true  },
-              { f: 'code',           l: 'Test Code',      req: true  },
-              { f: 'category',       l: 'Category',       req: true  },
-              { f: 'sampleType',     l: 'Sample Type',    req: false },
-              { f: 'processingTime', l: 'Processing Time',req: false },
-              { f: 'normalRange',    l: 'Normal Range',   req: false },
+              { f: 'name',           l: 'Test Name',       req: true  },
+              { f: 'code',           l: 'Test Code',       req: true  },
+              { f: 'category',       l: 'Category',        req: true  },
+              { f: 'sampleType',     l: 'Sample Type',     req: false },
+              { f: 'processingTime', l: 'Processing Time', req: false },
+              { f: 'normalRange',    l: 'Normal Range',    req: false },
             ].map(({ f, l, req }) => (
               <div key={f}>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">{l}</label>
@@ -295,38 +328,91 @@ export function Pathology() {
       </Modal>
 
       {/* Book Tests Modal */}
-      <Modal isOpen={bookingModal} onClose={() => setBookingModal(false)} title="Book Tests for Patient" size="lg">
+      <Modal isOpen={bookingModal} onClose={closeBookingModal} title="Book Tests for Patient" size="lg">
         <form onSubmit={handleSaveBooking} className="space-y-4">
-          <div>
+
+          {/* Searchable patient combobox */}
+          <div className="relative">
             <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Patient</label>
-            <select value={bookingForm.patient} onChange={(e) => setBookingForm({ ...bookingForm, patient: e.target.value })}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50" required>
-              <option value="">Select Patient</option>
-              {patients.map(p => <option key={p._id} value={p._id}>{p.name} ({p.patientId})</option>)}
-            </select>
+            <div className="relative">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                value={patientSearch !== '' ? patientSearch : (selectedPatient ? `${selectedPatient.name} (${selectedPatient.patientId})` : '')}
+                onFocus={() => setPatientOpen(true)}
+                onChange={(e) => { setPatientSearch(e.target.value); setPatientOpen(true); setSelectedPatient(null); setBookingForm(f => ({ ...f, patient: '' })); }}
+                onBlur={() => setTimeout(() => setPatientOpen(false), 150)}
+                placeholder="Search patient by name or ID…"
+                className={`w-full border rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition-colors ${selectedPatient ? 'border-blue-300' : 'border-slate-200'}`}
+              />
+            </div>
+            {patientOpen && (patientLoading || patientResults.length > 0) && (
+              <div className="absolute top-full left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto mt-1">
+                {patientLoading ? (
+                  <div className="px-4 py-3 flex items-center justify-center gap-2 text-sm text-slate-400">
+                    <Loader2 size={14} className="animate-spin" /> Searching…
+                  </div>
+                ) : patientResults.map((p: Patient) => (
+                  <button key={p._id} type="button"
+                    onMouseDown={() => { setBookingForm(f => ({ ...f, patient: p._id })); setSelectedPatient(p); setPatientSearch(''); setPatientOpen(false); setPatientResults([]); }}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 border-b border-slate-50 last:border-0 transition-colors flex justify-between items-center">
+                    <span className="font-medium text-slate-800">{p.name}</span>
+                    <span className="text-xs text-slate-400 font-mono">{p.patientId}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
+          {/* Searchable test selection */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Select Tests</label>
-            <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-50">
-              {tests.filter(t => t.isActive).map(t => (
-                <label key={t._id} className="flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors">
-                  <div className="flex items-center gap-2.5">
-                    <input type="checkbox" checked={bookingForm.testIds.includes(t._id)} onChange={() => toggleTest(t._id)}
-                      className="w-4 h-4 rounded accent-blue-600" />
-                    <div>
-                      <p className="text-sm font-medium text-slate-800">{t.name}</p>
-                      <p className="text-xs text-slate-400">{t.code}</p>
-                    </div>
-                  </div>
-                  <span className="text-sm font-bold text-blue-600">&#8377;{t.price.toLocaleString('en-IN')}</span>
-                </label>
-              ))}
+            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Select Tests</label>
+            <div className="relative">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                value={testSearch}
+                onChange={(e) => setTestSearch(e.target.value)}
+                placeholder="Search test by name or code…"
+                className="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition-colors"
+              />
+              {filteredTests.length > 0 && (
+                <div className="absolute top-full left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto mt-1">
+                  {filteredTests.map(t => (
+                    <button key={t._id} type="button"
+                      onMouseDown={() => addTest(t)}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 border-b border-slate-50 last:border-0 transition-colors flex justify-between items-center">
+                      <div>
+                        <span className="font-medium text-slate-800">{t.name}</span>
+                        <span className="text-xs text-slate-400 ml-2">{t.code} · {t.category}</span>
+                      </div>
+                      <span className="text-blue-600 font-semibold text-sm">&#8377;{t.price.toLocaleString('en-IN')}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            {bookingForm.testIds.length > 0 && (
+
+            {/* Selected test chips */}
+            {selectedTests.length > 0 ? (
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {selectedTests.map(t => (
+                  <span key={t._id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-800 border border-blue-200 rounded-xl text-xs font-medium">
+                    <span>{t.name}</span>
+                    <span className="text-blue-500 font-semibold">&#8377;{t.price.toLocaleString('en-IN')}</span>
+                    <button type="button" onClick={() => removeTest(t._id)}
+                      className="ml-0.5 text-blue-400 hover:text-red-500 transition-colors">
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-slate-400">Type above to search and add tests</p>
+            )}
+
+            {selectedTests.length > 0 && (
               <div className="mt-2 px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl flex justify-between items-center">
-                <span className="text-sm text-blue-700 font-medium">{bookingForm.testIds.length} test(s) selected</span>
-                <span className="text-base font-bold text-blue-700">Net: &#8377;{netTotal.toLocaleString('en-IN')}</span>
+                <span className="text-sm text-blue-700 font-medium">{selectedTests.length} test(s) selected · subtotal &#8377;{selectedTotal.toLocaleString('en-IN')}</span>
+                <span className="text-base font-bold text-blue-700">Net &#8377;{netTotal.toLocaleString('en-IN')}</span>
               </div>
             )}
           </div>
@@ -366,7 +452,7 @@ export function Pathology() {
               {saving ? <Loader2 size={16} className="animate-spin" /> : <FlaskConical size={16} />}
               {saving ? 'Booking...' : 'Book Tests'}
             </button>
-            <button type="button" onClick={() => setBookingModal(false)}
+            <button type="button" onClick={closeBookingModal}
               className="px-6 border border-slate-200 py-2.5 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
           </div>
         </form>

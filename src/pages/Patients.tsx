@@ -4,10 +4,10 @@ import { Modal } from '../components/Modal';
 import { Table } from '../components/Table';
 import { PermissionGuard } from '../components/PermissionGuard';
 
-interface Patient { _id: string; patientId: string; name: string; age: number; gender: string; phone: string; email: string; bloodGroup: string; city?: { name: string }; isActive: boolean; createdAt: string; }
+interface Patient { _id: string; patientId: string; name: string; age: number; gender: string; phone: string; address?: string; city?: { name: string }; marriageYear?: number; isActive: boolean; createdAt: string; }
 interface City { _id: string; name: string; state: string; }
 
-const empty = { name: '', age: '', gender: 'male', phone: '', email: '', address: '', city: '', bloodGroup: '', emergencyContact: '' };
+const empty = { name: '', age: '', gender: '', phone: '', city: '', address: '', marriageYear: '' };
 
 export function Patients() {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -38,7 +38,7 @@ export function Patients() {
 
   const openCreate = () => { setForm({ ...empty }); setEditId(null); setModal(true); };
   const openEdit = (p: Patient) => {
-    setForm({ name: p.name, age: String(p.age), gender: p.gender, phone: p.phone, email: p.email || '', address: '', city: '', bloodGroup: p.bloodGroup || '', emergencyContact: '' });
+    setForm({ name: p.name, age: String(p.age), gender: p.gender, phone: p.phone, city: '', address: p.address || '', marriageYear: p.marriageYear ? String(p.marriageYear) : '' });
     setEditId(p._id);
     setModal(true);
   };
@@ -47,7 +47,7 @@ export function Patients() {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = { ...form, age: Number(form.age) };
+      const payload = { ...form, age: Number(form.age), marriageYear: form.marriageYear ? Number(form.marriageYear) : undefined };
       if (editId) await api.put(`/patients/${editId}`, payload);
       else await api.post('/patients', payload);
       setModal(false);
@@ -64,8 +64,9 @@ export function Patients() {
     { key: 'age', label: 'Age' },
     { key: 'gender', label: 'Gender', render: (r: Patient) => <span className="capitalize">{r.gender}</span> },
     { key: 'phone', label: 'Phone' },
-    { key: 'bloodGroup', label: 'Blood Group', render: (r: Patient) => r.bloodGroup || '-' },
     { key: 'city', label: 'City', render: (r: Patient) => r.city?.name || '-' },
+    { key: 'address', label: 'Address', render: (r: Patient) => r.address || '-' },
+    { key: 'marriageYear', label: 'Marriage Yr', render: (r: Patient) => r.marriageYear || '-' },
     { key: 'actions', label: 'Actions', render: (r: Patient) => (
       <PermissionGuard module="patients" action="update">
         <button onClick={() => openEdit(r)} className="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
@@ -102,35 +103,35 @@ export function Patients() {
 
       <Modal isOpen={modal} onClose={() => setModal(false)} title={editId ? 'Edit Patient' : 'Add Patient'} size="lg">
         <form onSubmit={handleSave} className="grid grid-cols-2 gap-4">
-          {[{ f: 'name', l: 'Full Name', t: 'text' }, { f: 'phone', l: 'Phone', t: 'tel' }, { f: 'email', l: 'Email', t: 'email' }, { f: 'emergencyContact', l: 'Emergency Contact', t: 'tel' }].map(({ f, l, t }) => (
-            <div key={f}>
-              <label className="block text-sm font-medium text-slate-700 mb-1">{l}</label>
-              <input type={t} value={(form as Record<string, string>)[f]} onChange={(e) => setForm({ ...form, [f]: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required={f === 'name' || f === 'phone'} />
-            </div>
-          ))}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Age</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Patient Name <span className="ml-1 text-red-500">*</span></label>
+            <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number <span className="ml-1 text-red-500">*</span></label>
+            <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Age <span className="ml-1 text-red-500">*</span></label>
             <input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required min="0" max="150" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Gender</label>
-            <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Gender <span className="ml-1 text-red-500">*</span></label>
+            <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+              <option value="">Select Gender</option>
               {['male', 'female', 'other'].map(g => <option key={g} value={g} className="capitalize">{g}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Blood Group</label>
-            <select value={form.bloodGroup} onChange={(e) => setForm({ ...form, bloodGroup: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">Select</option>
-              {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">City <span className="ml-1 text-red-500">*</span></label>
             <select value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Select City</option>
               {cities.map(c => <option key={c._id} value={c._id}>{c.name}, {c.state}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Marriage Year</label>
+            <input type="number" value={form.marriageYear} onChange={(e) => setForm({ ...form, marriageYear: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" min="1900" max={new Date().getFullYear()} placeholder="e.g. 2018" />
           </div>
           <div className="col-span-2">
             <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>

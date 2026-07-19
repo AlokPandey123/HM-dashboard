@@ -89,7 +89,7 @@ export function Cities() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Hospital Cities</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Cities</h1>
           <p className="text-slate-500 text-sm">{total} cities configured</p>
         </div>
         {hasPermission('cities', 'create') && (

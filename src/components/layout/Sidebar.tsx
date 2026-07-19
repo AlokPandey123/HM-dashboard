@@ -38,7 +38,7 @@ const navGroups: NavGroup[] = [
     group: 'Administration',
     groupIcon: Building2,
     items: [
-      { to: '/cities', label: 'Hospital Cities', icon: Building2, module: 'cities' },
+      { to: '/cities', label: 'Cities', icon: Building2, module: 'cities' },
       { to: '/users',  label: 'Admin Users',     icon: Users,     module: 'admin_users' },
     ],
   },
