@@ -66,7 +66,7 @@ export function Patients() {
     { key: 'phone', label: 'Phone' },
     { key: 'city', label: 'City', render: (r: Patient) => r.city?.name || '-' },
     { key: 'address', label: 'Address', render: (r: Patient) => r.address || '-' },
-    { key: 'marriageYear', label: 'Marriage Yr', render: (r: Patient) => r.marriageYear || '-' },
+    { key: 'marriageYear', label: 'Married Yrs', render: (r: Patient) => r.marriageYear || '-' },
     { key: 'actions', label: 'Actions', render: (r: Patient) => (
       <PermissionGuard module="patients" action="update">
         <button onClick={() => openEdit(r)} className="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
@@ -130,8 +130,8 @@ export function Patients() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Marriage Year</label>
-            <input type="number" value={form.marriageYear} onChange={(e) => setForm({ ...form, marriageYear: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" min="1900" max={new Date().getFullYear()} placeholder="e.g. 2018" />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Years Married</label>
+            <input type="number" value={form.marriageYear} onChange={(e) => setForm({ ...form, marriageYear: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" min="1" placeholder="e.g. 5" />
           </div>
           <div className="col-span-2">
             <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
