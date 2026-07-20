@@ -16,6 +16,8 @@ const colorMap: Record<string, { gradient: string; text: string; iconBg: string 
   orange: { gradient: 'from-orange-400 to-rose-500',   text: 'text-orange-50', iconBg: 'bg-orange-400/30' },
   red:    { gradient: 'from-red-500 to-rose-600',      text: 'text-red-50',    iconBg: 'bg-red-400/30'    },
   teal:   { gradient: 'from-teal-500 to-cyan-600',     text: 'text-teal-50',   iconBg: 'bg-teal-400/30'   },
+  indigo: { gradient: 'from-indigo-500 to-sky-600',    text: 'text-sky-50',    iconBg: 'bg-sky-400/30'    },
+  cyan:   { gradient: 'from-cyan-500 to-sky-600',      text: 'text-cyan-50',   iconBg: 'bg-cyan-400/30'   },
 };
 
 export function StatsCard({ title, value, icon: Icon, color = 'blue', sub, trend }: Props) {

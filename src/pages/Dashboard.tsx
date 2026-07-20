@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, Hospital, DollarSign, FlaskConical, AlertTriangle, Plus, Stethoscope, CreditCard, BarChart3, RotateCcw } from 'lucide-react';
+import { Users, Hospital, DollarSign, FlaskConical, AlertTriangle, Plus, Stethoscope, CreditCard, BarChart3, RotateCcw, Receipt, ClipboardList } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { StatsCard } from '../components/StatsCard';
@@ -10,15 +10,17 @@ interface Stats {
   billing: { total: number; todayRevenue: number };
   tests: { pending: number; completed: number };
   medicine: { lowStock: number };
+  regularCheckups: { total: number; today: number; feeApplicable: number; totalRevenue: number };
 }
 
 const quickActions = [
-  { label: 'Add Patient',    icon: Plus,        path: '/patients', color: 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100' },
-  { label: 'New OPD',        icon: Stethoscope, path: '/opd',      color: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-100' },
-  { label: 'Create Bill',    icon: CreditCard,  path: '/billing',  color: 'bg-orange-50 text-orange-600 hover:bg-orange-100 border-orange-100' },
-  { label: 'Book Test',      icon: FlaskConical,path: '/pathology',color: 'bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-100' },
-  { label: 'View Reports',   icon: BarChart3,   path: '/reports',  color: 'bg-teal-50 text-teal-600 hover:bg-teal-100 border-teal-100' },
-  { label: 'Process Return', icon: RotateCcw,   path: '/returns',  color: 'bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-100' },
+  { label: 'Add Patient',         icon: Plus,         path: '/patients',        color: 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100' },
+  { label: 'New OPD',             icon: Stethoscope,  path: '/opd',             color: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-100' },
+  { label: 'Create Bill',         icon: CreditCard,   path: '/billing',         color: 'bg-orange-50 text-orange-600 hover:bg-orange-100 border-orange-100' },
+  { label: 'Book Test',           icon: FlaskConical, path: '/pathology',      color: 'bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-100' },
+  { label: 'Regular Checkup',     icon: ClipboardList, path: '/regular-checkup', color: 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border-indigo-100' },
+  { label: 'View Reports',        icon: BarChart3,    path: '/reports',          color: 'bg-teal-50 text-teal-600 hover:bg-teal-100 border-teal-100' },
+  { label: 'Process Return',      icon: RotateCcw,    path: '/returns',          color: 'bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-100' },
 ];
 
 export function Dashboard() {
@@ -63,18 +65,46 @@ export function Dashboard() {
           sub={`${stats?.opd.today ?? 0} visits today`}
         />
         <StatsCard
+          title="Total Bills"
+          value={stats?.billing.total ?? 0}
+          icon={Receipt}
+          color="purple"
+          sub="Invoices created"
+        />
+        <StatsCard
           title="Today's Revenue"
           value={`₹${(stats?.billing.todayRevenue ?? 0).toLocaleString('en-IN')}`}
           icon={DollarSign}
           color="orange"
-          sub={`${stats?.billing.total ?? 0} total bills`}
+          sub="Collected today"
         />
         <StatsCard
           title="Pending Tests"
           value={stats?.tests.pending ?? 0}
           icon={FlaskConical}
-          color="purple"
+          color="indigo"
           sub={`${stats?.tests.completed ?? 0} completed`}
+        />
+        <StatsCard
+          title="Regular Checkups"
+          value={stats?.regularCheckups.total ?? 0}
+          icon={ClipboardList}
+          color="teal"
+          sub={`+${stats?.regularCheckups.today ?? 0} today`}
+        />
+        <StatsCard
+          title="Chargeable Checkups"
+          value={stats?.regularCheckups.feeApplicable ?? 0}
+          icon={CreditCard}
+          color="green"
+          sub="Fee-based sessions"
+        />
+        <StatsCard
+          title="Checkup Revenue"
+          value={`₹${(stats?.regularCheckups.totalRevenue ?? 0).toLocaleString('en-IN')}`}
+          icon={DollarSign}
+          color="cyan"
+          sub="Regular checkup fees"
         />
       </div>
 
