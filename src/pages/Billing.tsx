@@ -6,7 +6,7 @@ import { StatsCard } from '../components/StatsCard';
 import { PermissionGuard } from '../components/PermissionGuard';
 import { printInvoice } from '../utils/printInvoice';
 
-interface Bill { _id: string; billId: string; patient: { name: string; patientId: string }; billType: string; totalAmount: number; paymentStatus: string; paymentMode: string; createdAt: string; amountPaid: number; }
+interface Bill { _id: string; billId: string; customerType: 'patient' | 'walk-in'; patient: { name: string; patientId: string } | null; walkInCustomer?: { name: string; phone?: string }; billType: string; totalAmount: number; paymentStatus: string; paymentMode: string; createdAt: string; amountPaid: number; }
 interface Patient { _id: string; name: string; patientId: string; }
 interface Medicine { _id: string; name: string; sellingPrice: number; currentStock: number; unit: string; }
 interface Stats { totalRevenue: number; todayRevenue: number; pendingAmount: number; totalBills: number; }
@@ -34,6 +34,9 @@ export function Billing() {
   const [items, setItems] = useState<BillItem[]>([]);
   const [medSearch, setMedSearch] = useState('');
   const [filteredMeds, setFilteredMeds] = useState<Medicine[]>([]);
+  const [customerType, setCustomerType] = useState<'patient' | 'walk-in'>('patient');
+  const [walkInName, setWalkInName] = useState('');
+  const [walkInPhone, setWalkInPhone] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
   const [patientOpen, setPatientOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -77,8 +80,12 @@ export function Billing() {
     setModal(false);
     setItems([]);
     setSelectedPatient(null);
+    setCustomerType('patient');
+    setWalkInName('');
+    setWalkInPhone('');
     setPatientSearch('');
     setPatientResults([]);
+    setBillForm({ patient: '', paymentStatus: 'pending', paymentMode: 'cash', amountPaid: '', discount: '', tax: '', notes: '' });
   };
 
   const addMedicine = (med: Medicine) => {
@@ -100,8 +107,9 @@ export function Billing() {
 
   const handleSave = async (e: React.SyntheticEvent) => {
     e.preventDefault();
-    if (!billForm.patient) { alert('Please select a patient'); return; }
     if (items.length === 0) { alert('Add at least one item'); return; }
+    if (customerType === 'patient' && !billForm.patient) { alert('Please select a patient'); return; }
+    if (customerType === 'walk-in' && !walkInName.trim()) { alert('Please enter the walk-in customer name'); return; }
     setSaving(true);
     const snapItems = items;
     const snapForm = billForm;
@@ -109,19 +117,32 @@ export function Billing() {
     const snapTotal = totalAmount;
     const snapPatient = selectedPatient;
     try {
-      const res = await api.post('/billing', { ...billForm, items, discount: Number(billForm.discount || 0), tax: Number(billForm.tax || 0), amountPaid: Number(billForm.amountPaid || 0) });
+      const res = await api.post('/billing', {
+        ...billForm,
+        customerType,
+        patient: customerType === 'patient' ? billForm.patient : undefined,
+        walkInCustomer: customerType === 'walk-in' ? { name: walkInName.trim(), phone: walkInPhone.trim() || undefined } : undefined,
+        items,
+        discount: Number(billForm.discount || 0),
+        tax: Number(billForm.tax || 0),
+        amountPaid: Number(billForm.amountPaid || 0),
+      });
       const created = res.data?.data?.bill || res.data?.data;
       setModal(false);
       setItems([]);
       setBillForm({ patient: '', paymentStatus: 'pending', paymentMode: 'cash', amountPaid: '', discount: '', tax: '', notes: '' });
       setSelectedPatient(null);
+      setCustomerType('patient');
+      setWalkInName('');
+      setWalkInPhone('');
       setPatientSearch('');
       setPatientResults([]);
       load();
       printInvoice({
         billId: created?.billId || 'N/A',
         createdAt: created?.createdAt || new Date().toISOString(),
-        patient: { name: snapPatient?.name || '', patientId: snapPatient?.patientId || '' },
+        patient: customerType === 'patient' ? { name: snapPatient?.name || '', patientId: snapPatient?.patientId || '' } : undefined,
+        walkInCustomer: customerType === 'walk-in' ? { name: walkInName.trim(), phone: walkInPhone.trim() || undefined } : undefined,
         items: snapItems.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice, total: i.total })),
         subtotal: snapSubtotal,
         discount: Number(snapForm.discount || 0),
@@ -144,7 +165,8 @@ export function Billing() {
       printInvoice({
         billId: detail.billId,
         createdAt: detail.createdAt,
-        patient: { name: detail.patient?.name || bill.patient?.name || '', patientId: detail.patient?.patientId || bill.patient?.patientId || '' },
+        patient: detail.patient ? { name: detail.patient.name || bill.patient?.name || '', patientId: detail.patient.patientId || bill.patient?.patientId || '' } : undefined,
+        walkInCustomer: detail.walkInCustomer || bill.walkInCustomer,
         items: (detail.items || []).map((i: { name: string; quantity: number; unitPrice: number; total: number }) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice, total: i.total })),
         subtotal: detail.subtotal ?? detail.totalAmount,
         discount: detail.discount ?? 0,
@@ -222,8 +244,13 @@ export function Billing() {
                     <span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded-lg">{b.billId}</span>
                   </td>
                   <td className="px-4 py-3.5">
-                    <p className="font-semibold text-slate-800 text-sm">{b.patient?.name}</p>
-                    <p className="text-xs text-slate-400">{b.patient?.patientId}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-slate-800 text-sm">{b.customerType === 'walk-in' ? (b.walkInCustomer?.name || 'Walk-in Customer') : (b.patient?.name || '—')}</p>
+                      {b.customerType === 'walk-in' && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-amber-50 text-amber-700 border border-amber-200">Walk-in</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400">{b.customerType === 'walk-in' ? (b.walkInCustomer?.phone || 'No phone') : (b.patient?.patientId || '—')}</p>
                   </td>
                   <td className="px-4 py-3.5 font-bold text-slate-800">₹{b.totalAmount.toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3.5 font-semibold text-emerald-600">₹{b.amountPaid.toLocaleString('en-IN')}</td>
@@ -270,38 +297,60 @@ export function Billing() {
       <Modal isOpen={modal} onClose={closeModal} title="Create Bill (POS)" size="xl">
         <form onSubmit={handleSave} className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
-
-            {/* Searchable patient combobox */}
-            <div className="relative">
-              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Patient</label>
-              <div className="relative">
-                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <input
-                  value={patientSearch !== '' ? patientSearch : (selectedPatient ? `${selectedPatient.name} (${selectedPatient.patientId})` : '')}
-                  onFocus={() => setPatientOpen(true)}
-                  onChange={(e) => { setPatientSearch(e.target.value); setPatientOpen(true); setSelectedPatient(null); setBillForm(f => ({ ...f, patient: '' })); }}
-                  onBlur={() => setTimeout(() => setPatientOpen(false), 150)}
-                  placeholder="Search patient by name or ID…"
-                  className={`w-full border rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition-colors ${selectedPatient ? 'border-blue-300' : 'border-slate-200'}`}
-                />
-              </div>
-              {patientOpen && (patientLoading || patientResults.length > 0) && (
-                <div className="absolute top-full left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto mt-1">
-                  {patientLoading ? (
-                    <div className="px-4 py-3 flex items-center justify-center gap-2 text-sm text-slate-400">
-                      <Loader2 size={14} className="animate-spin" /> Searching…
-                    </div>
-                  ) : patientResults.map((p: Patient) => (
-                    <button key={p._id} type="button"
-                      onMouseDown={() => { setBillForm(f => ({ ...f, patient: p._id })); setSelectedPatient(p); setPatientSearch(''); setPatientOpen(false); setPatientResults([]); }}
-                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 border-b border-slate-50 last:border-0 transition-colors flex justify-between items-center">
-                      <span className="font-medium text-slate-800">{p.name}</span>
-                      <span className="text-xs text-slate-400 font-mono">{p.patientId}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className="col-span-2 flex gap-2">
+              <button type="button" onClick={() => setCustomerType('patient')} className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${customerType === 'patient' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
+                Patient
+              </button>
+              <button type="button" onClick={() => setCustomerType('walk-in')} className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${customerType === 'walk-in' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
+                Walk-in
+              </button>
             </div>
+
+            {customerType === 'patient' ? (
+              <div className="relative">
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Patient</label>
+                <div className="relative">
+                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input
+                    value={patientSearch !== '' ? patientSearch : (selectedPatient ? `${selectedPatient.name} (${selectedPatient.patientId})` : '')}
+                    onFocus={() => setPatientOpen(true)}
+                    onChange={(e) => { setPatientSearch(e.target.value); setPatientOpen(true); setSelectedPatient(null); setBillForm(f => ({ ...f, patient: '' })); }}
+                    onBlur={() => setTimeout(() => setPatientOpen(false), 150)}
+                    placeholder="Search patient by name or ID…"
+                    className={`w-full border rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition-colors ${selectedPatient ? 'border-blue-300' : 'border-slate-200'}`}
+                  />
+                </div>
+                {patientOpen && (patientLoading || patientResults.length > 0) && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto mt-1">
+                    {patientLoading ? (
+                      <div className="px-4 py-3 flex items-center justify-center gap-2 text-sm text-slate-400">
+                        <Loader2 size={14} className="animate-spin" /> Searching…
+                      </div>
+                    ) : patientResults.map((p: Patient) => (
+                      <button key={p._id} type="button"
+                        onMouseDown={() => { setBillForm(f => ({ ...f, patient: p._id })); setSelectedPatient(p); setPatientSearch(''); setPatientOpen(false); setPatientResults([]); }}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 border-b border-slate-50 last:border-0 transition-colors flex justify-between items-center">
+                        <span className="font-medium text-slate-800">{p.name}</span>
+                        <span className="text-xs text-slate-400 font-mono">{p.patientId}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Customer Name</label>
+                  <input value={walkInName} onChange={(e) => setWalkInName(e.target.value)} placeholder="Enter walk-in name"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-slate-50 focus:bg-white transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Phone</label>
+                  <input value={walkInPhone} onChange={(e) => setWalkInPhone(e.target.value)} placeholder="Optional phone number"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-slate-50 focus:bg-white transition-colors" />
+                </div>
+              </div>
+            )}
 
             <div className="relative">
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Search & Add Medicine</label>

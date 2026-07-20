@@ -3,11 +3,12 @@ import { Stethoscope, Plus, ChevronLeft, ChevronRight, Loader2, CheckCircle, Clo
 import api from '../api/axios';
 import { Modal } from '../components/Modal';
 import { PermissionGuard } from '../components/PermissionGuard';
+import { SearchSelect } from '../components/SearchSelect';
 
-interface OPD { _id: string; opdId: string; patient: { name: string; patientId: string }; doctor: string; visitDate: string; fees: number; paymentStatus: string; paymentMode: string; amountPaid: number; }
+interface OPD { _id: string; opdId: string; patient: { name: string; patientId: string }; doctor: { name: string; specialization?: string } | null; visitDate: string; fees: number; paymentStatus: string; paymentMode: string; amountPaid: number; }
 interface Patient { _id: string; name: string; patientId: string; }
 
-const empty = { patient: '', doctor: 'Dr. ', visitDate: new Date().toISOString().split('T')[0], fees: '', paymentStatus: 'pending', paymentMode: 'cash', amountPaid: '', notes: '' };
+const empty = { patient: '', doctorId: '', doctorLabel: '', visitDate: new Date().toISOString().split('T')[0], fees: '', paymentStatus: 'pending', paymentMode: 'cash', amountPaid: '', notes: '' };
 
 const statusConfig: Record<string, { label: string; cls: string; icon: typeof CheckCircle }> = {
   paid:    { label: 'Paid',    cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
@@ -57,6 +58,12 @@ export function OPD() {
     return () => clearTimeout(t);
   }, [patientSearch]);
 
+  const searchDoctors = async (q: string) => {
+    const r = await api.get('/doctors', { params: { search: q, limit: 8 } });
+    const list: { _id: string; name: string; specialization?: string }[] = r.data.data.doctors || [];
+    return list.map(d => ({ _id: d._id, label: `Dr. ${d.name}`, sublabel: d.specialization }));
+  };
+
   const closeModal = () => {
     setModal(false);
     setForm({ ...empty });
@@ -69,9 +76,10 @@ export function OPD() {
   const handleSave = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!form.patient) { alert('Please select a patient'); return; }
+    if (!form.doctorId) { alert('Please select a doctor'); return; }
     setSaving(true);
     try {
-      await api.post('/opd', { ...form, fees: Number(form.fees), amountPaid: Number(form.amountPaid) });
+      await api.post('/opd', { ...form, doctor: form.doctorId, fees: Number(form.fees), amountPaid: Number(form.amountPaid) });
       closeModal();
       load();
     } catch (err: unknown) {
@@ -142,7 +150,10 @@ export function OPD() {
                     <p className="font-semibold text-slate-800 text-sm">{o.patient?.name}</p>
                     <p className="text-xs text-slate-400">{o.patient?.patientId}</p>
                   </td>
-                  <td className="px-4 py-3.5 text-sm text-slate-700">{o.doctor}</td>
+                  <td className="px-4 py-3.5">
+                    <p className="text-sm text-slate-700">{o.doctor ? `Dr. ${o.doctor.name}` : '—'}</p>
+                    {o.doctor?.specialization && <p className="text-xs text-slate-400">{o.doctor.specialization}</p>}
+                  </td>
                   <td className="px-4 py-3.5 text-xs text-slate-500">{new Date(o.visitDate).toLocaleDateString('en-IN')}</td>
                   <td className="px-4 py-3.5 font-bold text-slate-800">&#8377;{o.fees.toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3.5 font-semibold text-emerald-600">&#8377;{(o.amountPaid ?? 0).toLocaleString('en-IN')}</td>
@@ -218,11 +229,15 @@ export function OPD() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Doctor Name <span className="text-red-500">*</span></label>
-            <input value={form.doctor} onChange={(e) => f('doctor', e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition-colors" required />
-          </div>
+          <SearchSelect
+            label="Doctor"
+            value={form.doctorId}
+            displayValue={form.doctorLabel}
+            onSelect={(item) => setForm(prev => ({ ...prev, doctorId: item?._id ?? '', doctorLabel: item?.label ?? '' }))}
+            onSearch={searchDoctors}
+            placeholder="Search doctors…"
+            required
+          />
 
           <div>
             <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Visit Date <span className="text-red-500">*</span></label>

@@ -8,7 +8,7 @@ import { useAuthStore } from '../store/authStore';
 interface User { _id: string; name: string; email: string; role: string; isActive: boolean; phone: string; permissions: { module: string; actions: string[] }[]; hospitalCity?: { name: string }; createdAt: string; }
 interface City { _id: string; name: string; state: string; }
 
-const ALL_MODULES = ['dashboard', 'cities', 'admin_users', 'patients', 'opd', 'pathology', 'billing', 'medicine_stock', 'reports', 'returns'];
+const ALL_MODULES = ['dashboard', 'cities', 'admin_users', 'patients', 'opd', 'pathology', 'billing', 'medicine_stock', 'reports', 'returns', 'doctors', 'regular_checkup'];
 const ALL_ACTIONS = ['view', 'create', 'update', 'delete'];
 
 const emptyForm = { name: '', email: '', password: '', phone: '', role: 'admin', hospitalCity: '', permissions: [] as { module: string; actions: string[] }[] };

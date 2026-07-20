@@ -11,6 +11,8 @@ import {
   Pill,
   BarChart3,
   RotateCcw,
+  ClipboardList,
+  UserCog,
   ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
@@ -38,8 +40,9 @@ const navGroups: NavGroup[] = [
     group: 'Administration',
     groupIcon: Building2,
     items: [
-      { to: '/cities', label: 'Cities', icon: Building2, module: 'cities' },
-      { to: '/users',  label: 'Admin Users',     icon: Users,     module: 'admin_users' },
+      { to: '/cities',   label: 'Cities',      icon: Building2, module: 'cities'      },
+      { to: '/users',    label: 'Admin Users', icon: Users,     module: 'admin_users' },
+      { to: '/doctors',  label: 'Doctors',     icon: UserCog,   module: 'doctors'     },
     ],
   },
   {
@@ -48,8 +51,9 @@ const navGroups: NavGroup[] = [
     groupIcon: Stethoscope,
     items: [
       { to: '/patients',  label: 'Patients',    icon: UserRound,   module: 'patients'  },
-      { to: '/opd',       label: 'OPD Visits',  icon: Stethoscope, module: 'opd'       },
-      { to: '/pathology', label: 'Pathology',   icon: FlaskConical,module: 'pathology' },
+      { to: '/opd',             label: 'OPD Visits',      icon: Stethoscope,   module: 'opd'            },
+      { to: '/regular-checkup', label: 'Regular Checkup', icon: ClipboardList, module: 'regular_checkup' },
+      { to: '/pathology',       label: 'Pathology',       icon: FlaskConical,  module: 'pathology'      },
     ],
   },
   {
